@@ -2,6 +2,10 @@ const http = require('http');
 const sqlite3 = require('sqlite3').verbose();
 const url = require('url');
 const fs = require('fs');
+const ejs = require('ejs');
+const { rosybrown } = require('color-name');
+
+const fsp = fs.promises;
 
 let db = new sqlite3.Database('./airport.db', sqlite3.OPEN_READWRITE, (err) => {
     if (err) {
@@ -12,7 +16,7 @@ let db = new sqlite3.Database('./airport.db', sqlite3.OPEN_READWRITE, (err) => {
 
 http.createServer(function(req,res){
     let q = url.parse(req.url, true);
-    let filename = "." + (q.pathname==='/'?'/index.html':q.pathname);
+    let filename = "." + (q.pathname==='/'?'/first.html':q.pathname);
     
     fs.readFile(filename, function(err, data) {
         if (err) {
@@ -59,6 +63,46 @@ http.createServer(function(req,res){
             res.writeHead(301,{Location: 'http://localhost:8080'+'/'});
             return res.end();
         }
+        if(q.pathname=='/airportsearch.html'&&q.query.ap_name){
+            db.get('SELECT * FROM AIRPORT WHERE AP_NAME = "'+q.query.ap_name+'";', (err, row) => {
+                if (err) {
+                  return console.error(err.message);
+                }
+                if(row){
+                    var ht=fs.readFileSync('./airportresult.ejs', 'utf-8');
+                    var htren=ejs.render(ht,{filename:'airportresult.ejs',ap_name:row.AP_NAME,state:row.STATE,country:row.COUNTRY,city:row.CNAME});
+                    //dat=row;
+                    console.log(htren);
+                    //fs.unlink('./result.html');
+                    fsp.writeFile('./result.html', htren);
+                    return htren;
+                }
+            });
+            res.writeHead(301, {Location: './result.html'});
+            res.write('Test');
+            return res.end();
+        }
+        if(q.pathname=='/employeesearch.html'&&q.query.ssn){
+            db.get('SELECT * FROM EMPLOYEE WHERE SSN = '+q.query.ssn+';', (err, row) => {
+                if (err) {
+                  return console.error(err.message);
+                }
+                console.log(row);
+                if(row){
+                    var ht=fs.readFileSync('./employeeresult.ejs', 'utf-8');
+                    var htren=ejs.render(ht,{filename:'employeeresult.ejs',ap_name:row.AP_NAME,ssn:row.SSN,fname:row.FNAME,mname:row.M,lname:row.LNAME,address:row.ADDRESS,phone:row.PHONE,sex:row.SEX,jobtype:row.JOBTYPE,salary:row.SALARY,age:row.AGE});
+                    
+                    console.log(htren);
+                    //fsp.unlink('./result.html');
+                    fsp.writeFile('./resultE.html', htren);
+                    return htren;
+                }
+            });
+            res.writeHead(301, {Location: './resultE.html'});
+            res.write('Test');
+            return res.end();
+        }
+        
         res.writeHead(200, {'Content-Type': 'text/html'});
         res.write(data);
         //res.write('<p>extra paragraph</p>')
